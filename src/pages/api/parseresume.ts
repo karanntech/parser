@@ -79,6 +79,7 @@ const parseWithGemini = async (
       "name": "Candidate Name",
       "email": "example@gmail.com",
       "phone": "+12 123456789",
+      "location": "City, State/Country",
       "score": 80,
       "parsedText": "Summary of how the resume fits the job"
     }
@@ -133,6 +134,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             name: parsed.name,
             email: parsed.email,
             phone: parsed.phone,
+            location: parsed.location,
             score: parsed.score,
             parsedText: parsed.parsedText,
             resumeUrl: '',
