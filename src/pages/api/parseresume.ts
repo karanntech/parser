@@ -76,7 +76,8 @@ const parseWithGemini = async (
     Based on the job description, return a JSON with:
     {
       "name": "Candidate Name",
-      "contact": "Email or Phone",
+      "email": "example@gmail.com",
+      "phone": "+12 123456789",
       "score": 80,
       "parsedText": "Summary of how the resume fits the job"
     }
@@ -115,10 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     for (const [index, file] of files.entries()) {
       const text = await extractTextFromPdf(file);
-      if (!text || text.length < 100) {
-        console.warn(`Resume [${index}] has too little text`);
-        continue;
-      }
+      if (!text || text.length < 100) continue;
 
       try {
         const parsed = await parseWithGemini(text, jobDescription);
@@ -126,7 +124,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         candidates.push({
           id: `candidate-${index}`,
           name: parsed.name,
-          contact: parsed.contact,
+          email: parsed.email,
+          phone: parsed.phone,
           score: parsed.score,
           parsedText: parsed.parsedText,
           resumeUrl: '',
@@ -138,7 +137,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    return res.status(200).json({ success: true, candidates });
+    //Sort by score in descending order
+    const sorted = candidates.sort((a,b)=> b.score - a.score);
+
+
+    return res.status(200).json({ success: true, candidates:sorted });
   } catch (error) {
     console.error('[Parser Error]', error);
     return res.status(500).json({

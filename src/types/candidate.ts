@@ -1,7 +1,8 @@
 export interface Candidate {
   id: string;
   name: string;
-  contact?: string;
+  email: string;
+  phone: string;
   resumeUrl?: string;
   score: number;
   parsedText: string;
