@@ -17,3 +17,5 @@ export type ParsedResume = {
   error?: string;
   parsedText: string;
 };
+
+//mpXPMZpQJeQ9ZaHk
