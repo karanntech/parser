@@ -1,118 +1,121 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Spinner } from '@/components/ui/Spinner';
-import { Button } from '@/components/ui/Button';
-import { ParsedResume } from '@/types/candidate';
+import { ChangeEvent, useRef, useState } from 'react';
+import { useCandidateStore } from '@/store/useCandidateStore';
+import { Candidate } from '@/types/candidate';
 
-interface ResumeUploadProps {
-  onParsed: (resumeTexts: string[]) => Promise<void>;
+type Props = {
   jobDescription: string;
-  setJobDescription: React.Dispatch<React.SetStateAction<string>>;
+  setJobDescription: (text: string) => void;
   recruiterSuggestion: string;
-  setRecruiterSuggestion: React.Dispatch<React.SetStateAction<string>>;
-}
+  setRecruiterSuggestion: (text: string) => void;
+};
 
 export default function ResumeUpload({
-  onParsed,
   jobDescription,
   setJobDescription,
   recruiterSuggestion,
   setRecruiterSuggestion,
-}: ResumeUploadProps) {
-  const [files, setFiles] = useState<File[]>([]);
+}: Props) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { setCandidates } = useCandidateStore();
   const [loading, setLoading] = useState(false);
-  const [parsedResumes, setParsedResumes] = useState<string[]>([]);
+  const [error, setError] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(e.target.files || []);
-    if (selected.length + files.length > 1000) {
-      alert('You can upload up to 1000 resumes only.');
-      return;
-    }
-    setFiles(prev => [...prev, ...selected]);
-  };
+  const handleFiles = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-  const handleSubmit = async () => {
-    if (files.length === 0 || !jobDescription.trim()) {
-      alert('Please upload resumes and enter a job description.');
-      return;
-    }
+    const formData = new FormData();
+    const fileList = Array.from(files);
+    fileList.forEach(file => formData.append('file', file));
+    setSelectedFiles(fileList); // for UI display
 
     setLoading(true);
-    try {
-      const formData = new FormData();
-      files.forEach(file => formData.append('file', file)); // backend expects 'file'
-      formData.append('jobDescription', jobDescription);
-      formData.append('recruiterSuggestion', recruiterSuggestion);
+    setError('');
 
-      const res = await fetch(`/api/parseresume?jd=${encodeURIComponent(jobDescription)}`, {
+    try {
+      const query = new URLSearchParams({
+        jd: jobDescription,
+        rs: recruiterSuggestion,
+      });
+
+      const res = await fetch(`/api/parseresume?${query.toString()}`, {
         method: 'POST',
         body: formData,
       });
 
       if (!res.ok) {
-        const errorMsg = await res.text();
-        console.error('[Resume Parsing Error]', errorMsg);
         throw new Error('Failed to parse resumes');
       }
 
-      const { candidates } = await res.json();
-      console.log("Parsed candidates from backend:", candidates);
-
-      const parsedTexts = (candidates as ParsedResume[]).map(r => r.parsedText || '');
-      setParsedResumes(parsedTexts);
-      await onParsed(parsedTexts);
-    } catch (error) {
-      console.error('[handleSubmit Error]', error);
-      alert('Something went wrong while parsing resumes. Check the console for details.');
+      const { candidates }: { candidates: Candidate[] } = await res.json();
+      setCandidates(candidates);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'Unexpected error occurred.');
+      } else {
+        setError('Unexpected error occurred.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    console.log("Parsed Resumes:", parsedResumes);
-  }, [parsedResumes]);
-
   return (
-    <div className="p-6 bg-white rounded-2xl shadow space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Upload Resumes</h2>
+    <div className="bg-white p-6 rounded-2xl shadow-md space-y-6">
+      <h2 className="text-xl font-semibold text-black">Upload Resumes</h2>
 
-      <input
-        type="file"
-        multiple
-        accept="application/pdf"
-        onChange={handleFileChange}
-        className="text-sm"
-      />
-      <p className="text-sm text-gray-800">{files.length} file(s) selected</p>
-
-      <div className="text-gray-900">
-        <label className="block mb-1 font-medium">Job Description</label>
+      {/* Job Description Section */}
+      <div className="grid gap-4">
         <textarea
           rows={5}
+          placeholder="Paste the job description here..."
           value={jobDescription}
           onChange={e => setJobDescription(e.target.value)}
-          className="w-full p-3 border rounded-xl text-sm"
+          className="w-full p-3 border rounded-xl text-sm text-gray-800"
         />
-      </div>
 
-      <div className="text-gray-900">
-        <label className="block mb-1 font-medium">Recruiter Suggestions (Optional)</label>
         <textarea
           rows={3}
+          placeholder="Recruiter notes or suggestions (optional)"
           value={recruiterSuggestion}
           onChange={e => setRecruiterSuggestion(e.target.value)}
-          className="w-full p-3 border rounded-xl text-sm"
+          className="w-full p-3 border rounded-xl text-sm text-gray-800"
         />
       </div>
 
-      <div className="flex items-center space-x-4">
-        <Button onClick={handleSubmit} disabled={loading}>
-          {loading ? 'Processing...' : 'Submit & Parse Resumes'}
-        </Button>
-        {loading && <Spinner />}
+      {/* File Upload Section */}
+      <div className="space-y-3">
+        <h3 className="text-lg font-medium text-gray-600">Resume Files</h3>
+
+        <input
+          type="file"
+          accept=".pdf"
+          multiple
+          ref={inputRef}
+          onChange={handleFiles}
+          className="hidden"
+        />
+        <button
+          onClick={() => inputRef.current?.click()}
+          className="bg-black text-white py-2 px-4 rounded-xl hover:bg-gray-900"
+        >
+          {loading ? 'Parsing Resumes...' : 'Select PDF Resumes'}
+        </button>
+
+        {/* Show selected files */}
+        {selectedFiles.length > 0 && (
+          <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+            {selectedFiles.map((file, i) => (
+              <li key={i}>{file.name}</li>
+            ))}
+          </ul>
+        )}
+
+        {/* Error display */}
+        {error && <p className="text-red-600 text-sm">{error}</p>}
       </div>
     </div>
   );
