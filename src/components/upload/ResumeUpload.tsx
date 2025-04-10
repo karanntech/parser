@@ -1,8 +1,11 @@
 'use client';
 
 import { ChangeEvent, useRef, useState } from 'react';
+import { useRouter } from 'next/router';
 import { useCandidateStore } from '@/store/useCandidateStore';
 import { Candidate } from '@/types/candidate';
+
+
 
 type Props = {
   jobDescription: string;
@@ -22,6 +25,7 @@ export default function ResumeUpload({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const router = useRouter(); // ✅ Next.js navigation
 
   const handleFiles = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -30,7 +34,7 @@ export default function ResumeUpload({
     const formData = new FormData();
     const fileList = Array.from(files);
     fileList.forEach(file => formData.append('file', file));
-    setSelectedFiles(fileList); // for UI display
+    setSelectedFiles(fileList);
 
     setLoading(true);
     setError('');
@@ -46,12 +50,13 @@ export default function ResumeUpload({
         body: formData,
       });
 
-      if (!res.ok) {
-        throw new Error('Failed to parse resumes');
-      }
+      if (!res.ok) throw new Error('Failed to parse resumes');
 
       const { candidates }: { candidates: Candidate[] } = await res.json();
       setCandidates(candidates);
+
+      // ✅ Navigate to candidate list page
+      router.push('/candidates');
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message || 'Unexpected error occurred.');

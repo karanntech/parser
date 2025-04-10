@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import ResumeUpload from '@/components/upload/ResumeUpload';
-import CandidateTable from '@/components/candidate/CandidateTable';
-import { useCandidateStore } from '@/store/useCandidateStore';
 
 export default function HomePage() {
-  const { candidates } = useCandidateStore();
   const [jobDescription, setJobDescription] = useState('');
   const [recruiterSuggestion, setRecruiterSuggestion] = useState('');
 
@@ -16,8 +13,6 @@ export default function HomePage() {
         recruiterSuggestion={recruiterSuggestion}
         setRecruiterSuggestion={setRecruiterSuggestion}
       />
-
-      {candidates.length > 0 && <CandidateTable candidates={candidates} />}
     </div>
   );
 }
