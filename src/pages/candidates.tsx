@@ -1,11 +1,21 @@
+'use client'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { useCandidateStore } from "@/store/useCandidateStore";
-import { useState } from "react";
 import { FaCheck, FaTimes } from "react-icons/fa";
 
 export default function CandidatesPage() {
   const { candidates } = useCandidateStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedCandidate = candidates.find((c) => c.id === selectedId);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    if (candidates.length === 0) {
+      router.replace("/");
+    }
+  }, [candidates, router]);
 
   return (
     <div className="flex h-screen">
