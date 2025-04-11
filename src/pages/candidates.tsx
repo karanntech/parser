@@ -1,4 +1,4 @@
-'use client'
+"use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useCandidateStore } from "@/store/useCandidateStore";
@@ -83,9 +83,19 @@ export default function CandidatesPage() {
               </a>
             </div>
 
-            {/* <div className="bg-gray-400 text-white w-full h-96 flex items-center justify-center rounded">
-              Resume
-            </div> */}
+            <div className="w-full h-96 rounded overflow-hidden border shadow">
+              {selectedCandidate.resumeUrl ? (
+                <iframe
+                  src={selectedCandidate.resumeUrl}
+                  className="w-full h-full"
+                  title="Resume Viewer"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                  Resume not available
+                </div>
+              )}
+            </div>
           </>
         ) : (
           <div className="h-full flex items-center justify-center text-gray-400">

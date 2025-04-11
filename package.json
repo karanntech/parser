@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@google/genai": "^0.7.0",
-    "@supabase/supabase-js": "^2.49.4",
     "dotenv": "^16.4.7",
+    "firebase": "^11.6.0",
     "formidable": "^3.5.2",
     "next": "15.2.4",
     "pdf-parse": "^1.1.1",

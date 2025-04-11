@@ -1,12 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { IncomingForm, File as FormidableFile } from 'formidable';
 import fs from 'fs/promises';
+import { v4 as uuidv4 } from 'uuid';
 import { GoogleGenAI } from '@google/genai';
 import { Candidate } from '@/types/candidate';
 import { processInBatches } from '@/utils/batchHelper';
-import { uploadResumeToSupabase } from '@/utils/uploadResumeToSupabase';
-import { saveCandidateToSupabase } from '@/utils/saveCandidateToSupabase';
-import { v4 as uuidv4 } from 'uuid';
+import { storage, firestore } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { doc, setDoc } from 'firebase/firestore';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -86,6 +87,18 @@ const parseWithGemini = async (
   }
 };
 
+const uploadToFirebaseStorage = async (file: FormidableFile, candidateId: string): Promise<string> => {
+  const buffer = await fs.readFile(file.filepath);
+  const storageRef = ref(storage, `resumes/${candidateId}.pdf`);
+  await uploadBytes(storageRef, buffer, { contentType: 'application/pdf' });
+  return await getDownloadURL(storageRef);
+};
+
+const saveToFirestore = async (candidate: Candidate) => {
+  const docRef = doc(firestore, 'candidates', candidate.id);
+  await setDoc(docRef, candidate);
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
@@ -97,26 +110,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const candidates = await processInBatches<FormidableFile, Candidate>(
       files,
-      10, // Batch size
+      10,
       async (batch) => {
         const batchResults: Candidate[] = [];
 
-        for (const  file of batch) {
+        for (const file of batch) {
           try {
             const text = await extractTextFromPdf(file);
             if (!text || text.length < 100) continue;
 
             const parsed = await parseWithGemini(text, jobDescription);
-            const resumeUrl = await uploadResumeToSupabase(file);
+            const id = uuidv4();
+            const resumeUrl = await uploadToFirebaseStorage(file, id);
 
             const candidate: Candidate = {
-              id: uuidv4(),
+              id,
               ...parsed,
               resumeUrl,
               approved: false,
             };
 
-            await saveCandidateToSupabase(candidate);
+            await saveToFirestore(candidate);
             batchResults.push(candidate);
           } catch (err) {
             console.error('Error processing resume:', err);
@@ -124,7 +138,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
 
-        await delay(5000); // Delay between batches
+        await delay(5000);
         return batchResults;
       }
     );
